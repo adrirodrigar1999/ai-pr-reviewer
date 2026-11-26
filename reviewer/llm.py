@@ -67,8 +67,10 @@ class LLMClient:
                 data = resp.json()
             except ValueError as exc:
                 content_type = resp.headers.get("Content-Type", "?") if hasattr(resp, "headers") else "?"
+                history = [f"{r.status_code} {r.url}" for r in getattr(resp, "history", [])]
                 raise LLMError(
-                    f"El modelo respondió HTTP {resp.status_code} ({content_type}) sin JSON: {resp.text[:300]!r}"
+                    f"El modelo respondió HTTP {resp.status_code} ({content_type}) sin JSON: {resp.text[:300]!r}."
+                    f" URL final: {getattr(resp, 'url', '?')}. Redirecciones: {history or 'ninguna'}"
                 ) from exc
             try:
                 return data["choices"][0]["message"]["content"] or ""
