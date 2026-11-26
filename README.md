@@ -8,7 +8,11 @@ Se puede usar de dos formas:
 - **Modelo local, sin claves ni coste:** con `provider: ollama`, la Action arranca un modelo abierto (`qwen2.5-coder:7b`) dentro del propio runner de GitHub. El código no sale de GitHub.
 - **Cualquier API compatible con OpenAI:** **Azure OpenAI**, OpenAI, Google Gemini… o [llm-gateway](https://github.com/adrirodrigar1999/llm-gateway) delante de ellos, para controlar el coste y los modelos permitidos por equipo.
 
-👉 [Ver un ejemplo real de revisión](https://github.com/adrirodrigar1999/ai-pr-reviewer/pulls?q=is%3Apr+Demo)
+👉 [Ver un ejemplo real de revisión](https://github.com/adrirodrigar1999/ai-pr-reviewer/pull/3)
+
+<img src="docs/revision-demo.png" alt="Comentarios de la IA en un PR: inyección SQL, división por cero y petición HTTP sin timeout, cada uno en su línea" width="620">
+
+*Revisión hecha con un modelo local (`qwen2.5-coder:7b` en Ollama) dentro del runner de GitHub, sin claves ni coste.*
 
 ## Cómo funciona
 
