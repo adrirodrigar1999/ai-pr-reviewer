@@ -145,7 +145,11 @@ Imprime la revisión en Markdown sin publicar nada. Con el `llm-gateway` levanta
 | Tiempo por revisión | ~3 min | Segundos |
 | Calidad | Detecta los problemas claros | Mejor con lógica sutil |
 
-En las pruebas, el modelo de 3B fallaba los números de línea y mezclaba los mensajes. Con 7B y el anclaje por contenido, los cuatro errores del PR de demostración (inyección SQL, secreto en el código, división por cero y petición sin timeout) se señalan en su línea correcta.
+Resultados con el [PR de demostración](https://github.com/adrirodrigar1999/ai-pr-reviewer/pull/3), que tiene cuatro errores puestos a propósito (inyección SQL, secreto en el código, división por cero y petición sin timeout):
+- **qwen2.5-coder:3b:** fallaba los números de línea y asignaba mensajes al código equivocado. Descartado.
+- **qwen2.5-coder:7b + anclaje por contenido:** señala 3–4 de los 4 en su línea correcta, según la ejecución. Con temperatura 0 la detección de la inyección SQL, la división por cero y el timeout es estable. El secreto en el código se le escapa en algunas ejecuciones.
+
+Esto encaja con lo esperado: un modelo local pequeño sirve como primer filtro gratuito, y para revisiones más finas compensa un modelo mayor vía API.
 
 ## Decisiones de diseño
 
