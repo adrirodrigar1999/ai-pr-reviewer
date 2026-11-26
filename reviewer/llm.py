@@ -43,7 +43,7 @@ class LLMClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return self.session.post(self.url, json=body, headers=headers, timeout=self.timeout)
 
-    def complete(self, messages: list[dict[str, str]], temperature: float = 0.1) -> str:
+    def complete(self, messages: list[dict[str, str]], temperature: float = 0.0) -> str:
         body: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
