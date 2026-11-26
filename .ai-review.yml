@@ -1,0 +1,9 @@
+# Configuración del revisor para este repositorio (todas las claves son opcionales).
+language: español
+min_severity: low
+max_comments: 10
+rules:
+  - Todo cambio de lógica en reviewer/ debe venir con tests en tests/.
+  - Las llamadas HTTP deben tener timeout.
+ignore:
+  - "docs/*"

@@ -1,0 +1,18 @@
+# El revisor se revisa a sí mismo: cada PR de este repositorio pasa por la Action.
+name: Revisión con IA
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  models: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./

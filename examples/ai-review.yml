@@ -1,0 +1,27 @@
+# Copia este fichero en .github/workflows/ai-review.yml de tu repositorio.
+name: Revisión con IA
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  models: read # permite usar GitHub Models con el GITHUB_TOKEN, sin claves extra
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4 # solo necesario si usas .ai-review.yml
+      - uses: adrirodrigar1999/ai-pr-reviewer@v1
+        with:
+          fail-on: high # opcional: bloquea el PR si hay hallazgos graves
+
+      # Alternativa: pasar por llm-gateway para controlar coste y permisos por equipo
+      # - uses: adrirodrigar1999/ai-pr-reviewer@v1
+      #   with:
+      #     llm-base-url: https://mi-gateway.example.com/v1
+      #     llm-api-key: ${{ secrets.LLM_GATEWAY_KEY }}
+      #     model: gpt-4o-mini

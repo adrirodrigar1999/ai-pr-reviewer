@@ -1,0 +1,50 @@
+name: "AI PR Reviewer"
+description: "Revisa pull requests con un LLM y deja comentarios en las líneas con errores, riesgos de seguridad o tests ausentes."
+author: "Adrián Rodríguez García"
+branding:
+  icon: eye
+  color: blue
+
+inputs:
+  github-token:
+    description: "Token para leer el PR y publicar la revisión. También se usa para GitHub Models si no hay llm-api-key."
+    default: ${{ github.token }}
+  llm-base-url:
+    description: "URL base de una API compatible con OpenAI (GitHub Models, llm-gateway, Azure OpenAI vía pasarela, Ollama...)."
+    default: "https://models.github.ai/inference"
+  llm-api-key:
+    description: "Clave del proveedor del modelo. Vacío = usar github-token (GitHub Models)."
+    default: ""
+  model:
+    description: "Modelo a usar."
+    default: "openai/gpt-4o-mini"
+  config-path:
+    description: "Ruta del fichero de configuración del repositorio."
+    default: ".ai-review.yml"
+  max-diff-chars:
+    description: "Tamaño máximo del diff enviado al modelo (caracteres)."
+    default: "60000"
+  fail-on:
+    description: "Hace fallar el check si hay hallazgos de esta prioridad o mayor: none, low, medium, high."
+    default: "none"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Instalar el revisor
+      shell: bash
+      run: pip install --quiet --disable-pip-version-check "${{ github.action_path }}"
+    - name: Revisar el pull request
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        LLM_BASE_URL: ${{ inputs.llm-base-url }}
+        LLM_API_KEY: ${{ inputs.llm-api-key }}
+        LLM_MODEL: ${{ inputs.model }}
+        CONFIG_PATH: ${{ inputs.config-path }}
+        MAX_DIFF_CHARS: ${{ inputs.max-diff-chars }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: python -m reviewer
