@@ -57,7 +57,9 @@ runs:
       env:
         OLLAMA_MODEL: ${{ inputs.ollama-model }}
       run: |
-        curl -fsSL https://ollama.com/download/ollama-linux-amd64.tgz | sudo tar zx -C /usr
+        curl -fsSL https://ollama.com/install.sh | sh
+        # El instalador deja Ollama como servicio; se para para arrancarlo con contexto ampliado y caché propia
+        sudo systemctl stop ollama 2>/dev/null || true
         OLLAMA_CONTEXT_LENGTH=16384 OLLAMA_MODELS="$HOME/.ollama/models" nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
         for i in $(seq 1 30); do curl -sf http://localhost:11434/api/version >/dev/null && break; sleep 1; done
         OLLAMA_MODELS="$HOME/.ollama/models" ollama pull "$OLLAMA_MODEL"
