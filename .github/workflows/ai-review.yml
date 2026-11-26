@@ -1,5 +1,7 @@
 # El revisor se revisa a sí mismo: cada PR de este repositorio pasa por la Action.
-# Necesita los secretos LLM_BASE_URL y LLM_API_KEY (y la variable LLM_AUTH si usas Azure OpenAI).
+# Por defecto usa un modelo local con Ollama (gratis, sin claves).
+# Para usar Azure OpenAI u otro proveedor: crea los secretos LLM_BASE_URL y LLM_API_KEY
+# y la variable LLM_PROVIDER con el valor "api" (opcionales: LLM_AUTH y LLM_MODEL).
 name: Revisión con IA
 
 on:
@@ -13,10 +15,12 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: ./
         with:
+          provider: ${{ vars.LLM_PROVIDER == 'api' && '' || 'ollama' }}
           llm-base-url: ${{ secrets.LLM_BASE_URL }}
           llm-api-key: ${{ secrets.LLM_API_KEY }}
           llm-auth: ${{ vars.LLM_AUTH || 'bearer' }}

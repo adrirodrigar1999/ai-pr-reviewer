@@ -57,6 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         api_key=api_key,
         model=env("LLM_MODEL", "gpt-4o-mini"),
         auth=env("LLM_AUTH", "bearer"),
+        timeout=float(env("LLM_TIMEOUT", "120")),
     )
     config = load_repo_config(env("CONFIG_PATH", ".ai-review.yml"))
     max_chars = int(env("MAX_DIFF_CHARS", "60000"))

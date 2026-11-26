@@ -6,6 +6,12 @@ branding:
   color: blue
 
 inputs:
+  provider:
+    description: "Vacío = usar llm-base-url/llm-api-key. 'ollama' = ejecutar un modelo abierto dentro del runner (gratis, sin claves, más lento)."
+    default: ""
+  ollama-model:
+    description: "Modelo de Ollama cuando provider es 'ollama'."
+    default: "qwen2.5-coder:3b"
   github-token:
     description: "Token para leer el PR y publicar la revisión."
     default: ${{ github.token }}
@@ -37,6 +43,25 @@ runs:
     - uses: actions/setup-python@v5
       with:
         python-version: "3.12"
+
+    # --- Modelo local con Ollama (solo si provider: ollama) ---------------------
+    - name: Caché del modelo de Ollama
+      if: inputs.provider == 'ollama'
+      uses: actions/cache@v4
+      with:
+        path: ~/.ollama/models
+        key: ollama-${{ runner.os }}-${{ inputs.ollama-model }}
+    - name: Arrancar Ollama y descargar el modelo
+      if: inputs.provider == 'ollama'
+      shell: bash
+      env:
+        OLLAMA_MODEL: ${{ inputs.ollama-model }}
+      run: |
+        curl -fsSL https://ollama.com/download/ollama-linux-amd64.tgz | sudo tar zx -C /usr
+        OLLAMA_CONTEXT_LENGTH=16384 OLLAMA_MODELS="$HOME/.ollama/models" nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+        for i in $(seq 1 30); do curl -sf http://localhost:11434/api/version >/dev/null && break; sleep 1; done
+        OLLAMA_MODELS="$HOME/.ollama/models" ollama pull "$OLLAMA_MODEL"
+
     - name: Instalar el revisor
       shell: bash
       run: pip install --quiet --disable-pip-version-check "${{ github.action_path }}"
@@ -44,11 +69,12 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        LLM_BASE_URL: ${{ inputs.llm-base-url }}
-        LLM_API_KEY: ${{ inputs.llm-api-key }}
-        LLM_MODEL: ${{ inputs.model }}
-        LLM_AUTH: ${{ inputs.llm-auth }}
+        LLM_BASE_URL: ${{ inputs.provider == 'ollama' && 'http://localhost:11434/v1' || inputs.llm-base-url }}
+        LLM_API_KEY: ${{ inputs.provider == 'ollama' && 'ollama' || inputs.llm-api-key }}
+        LLM_MODEL: ${{ inputs.provider == 'ollama' && inputs.ollama-model || inputs.model }}
+        LLM_AUTH: ${{ inputs.provider == 'ollama' && 'bearer' || inputs.llm-auth }}
+        LLM_TIMEOUT: ${{ inputs.provider == 'ollama' && '900' || '120' }}
         CONFIG_PATH: ${{ inputs.config-path }}
-        MAX_DIFF_CHARS: ${{ inputs.max-diff-chars }}
+        MAX_DIFF_CHARS: ${{ inputs.provider == 'ollama' && inputs.max-diff-chars == '60000' && '24000' || inputs.max-diff-chars }}
         FAIL_ON: ${{ inputs.fail-on }}
       run: python -m reviewer
