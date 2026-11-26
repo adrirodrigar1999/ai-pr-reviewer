@@ -26,13 +26,16 @@ Responde ÚNICAMENTE con un objeto JSON con este formato:
       "line": 42,
       "severity": "high | medium | low",
       "category": "bug | security | tests | performance | maintainability",
+      "code": "fragmento EXACTO copiado de la línea señalada",
       "message": "qué problema hay y por qué importa",
       "suggestion": "cómo arreglarlo (opcional)"
     }
   ]
 }
 
-`line` debe ser el número que aparece a la izquierda de una línea marcada con `+`."""
+`line` debe ser el número que aparece a la izquierda de una línea marcada con `+`, y `code` un
+fragmento copiado literalmente de esa misma línea. Un problema, un hallazgo: no repitas el mismo
+problema en varias líneas."""
 
 
 def build_messages(files: list[FileDiff], config: RepoConfig, title: str = "", body: str = "") -> list[dict[str, str]]:

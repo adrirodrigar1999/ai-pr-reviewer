@@ -68,3 +68,21 @@ def test_report_texts():
     assert "Seguridad" in inline_comment(review.findings[0])
     empty = summary_body(parse_review(answer([]), FILES, RepoConfig()), "m", [], [], [])
     assert "No se han encontrado problemas" in empty
+
+
+def test_code_snippet_relocates_wrong_line_number():
+    wrong = {**f(line=12), "code": 'query = f"SELECT * FROM users WHERE id = {user_id}"'}
+    review = parse_review(answer([wrong]), FILES, RepoConfig())
+    assert [x.line for x in review.findings] == [7]
+
+
+def test_code_snippet_not_in_diff_is_discarded():
+    invented = {**f(line=7), "code": "eval(user_input)"}
+    review = parse_review(answer([invented]), FILES, RepoConfig())
+    assert review.findings == [] and review.discarded == 1
+
+
+def test_same_message_repeated_in_file_is_collapsed():
+    repeated = [f(line=3, message="Secreto en el código"), f(line=8, message="secreto  en el código")]
+    review = parse_review(answer(repeated), FILES, RepoConfig())
+    assert len(review.findings) == 1

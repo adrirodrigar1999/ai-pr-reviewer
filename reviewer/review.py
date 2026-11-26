@@ -1,8 +1,11 @@
 """Interpretación y validación de la respuesta del modelo.
 
-Un LLM puede inventarse ficheros o números de línea. Antes de publicar nada se
-comprueba que cada comentario apunta a una línea añadida que existe en el diff;
-lo que no cumple se descarta y se cuenta.
+Un LLM puede inventarse ficheros o números de línea. Antes de publicar nada:
+1. Si el modelo cita el fragmento de código (`code`), el comentario se ancla a la línea
+   añadida que de verdad contiene ese fragmento (los modelos pequeños suelen fallar el número).
+2. Se comprueba que cada comentario apunta a una línea añadida que existe en el diff;
+   lo que no cumple se descarta y se cuenta.
+3. Se eliminan duplicados (misma línea, o mismo mensaje repetido en un fichero).
 """
 
 from __future__ import annotations
@@ -27,13 +30,14 @@ class Finding(BaseModel):
     category: Category = "maintainability"
     message: str
     suggestion: str = ""
+    code: str = ""
 
     @field_validator("severity", "category", mode="before")
     @classmethod
     def _lower(cls, v):
         return v.strip().lower() if isinstance(v, str) else v
 
-    @field_validator("suggestion", mode="before")
+    @field_validator("suggestion", "code", mode="before")
     @classmethod
     def _none_to_empty(cls, v):
         return v or ""
@@ -56,9 +60,27 @@ def extract_json(text: str) -> dict:
     return json.loads(candidate[start : end + 1])
 
 
+def _normalize(code: str) -> str:
+    return " ".join(code.split())
+
+
+def anchor(finding: Finding, file: FileDiff) -> int | None:
+    """Devuelve la línea correcta para el hallazgo, o None si no se puede ubicar en el diff."""
+    added = {ln.new_lineno: _normalize(ln.content) for ln in file.lines if ln.kind == "+" and ln.new_lineno}
+    snippet = _normalize(finding.code)
+    if not snippet:
+        return finding.line if finding.line in added else None
+    if snippet in added.get(finding.line, ""):
+        return finding.line
+    matches = [n for n, content in added.items() if snippet and snippet in content]
+    if not matches:
+        return None  # cita código que no está en las líneas añadidas
+    return min(matches, key=lambda n: abs(n - finding.line))
+
+
 def parse_review(text: str, files: list[FileDiff], config: RepoConfig) -> Review:
     data = extract_json(text)
-    valid_lines = {f.path: f.added_lines for f in files}
+    by_path = {f.path: f for f in files}
     findings: list[Finding] = []
     discarded = 0
 
@@ -68,17 +90,27 @@ def parse_review(text: str, files: list[FileDiff], config: RepoConfig) -> Review
         except ValidationError:
             discarded += 1
             continue
-        if finding.line not in valid_lines.get(finding.file, set()):
+        file = by_path.get(finding.file)
+        line = anchor(finding, file) if file else None
+        if line is None:
             discarded += 1
             continue
+        finding.line = line
         if SEVERITY_ORDER[finding.severity] < SEVERITY_ORDER[config.min_severity]:
             continue
         findings.append(finding)
 
-    # Sin duplicados en la misma línea, lo más grave primero y con tope de comentarios
-    unique: dict[tuple[str, int], Finding] = {}
+    # Sin duplicados (misma línea o mismo mensaje en el fichero), lo más grave primero y con tope
+    seen_lines: set[tuple[str, int]] = set()
+    seen_messages: set[tuple[str, str]] = set()
+    ordered: list[Finding] = []
     for f in sorted(findings, key=lambda f: -SEVERITY_ORDER[f.severity]):
-        unique.setdefault((f.file, f.line), f)
-    ordered = list(unique.values())[: config.max_comments]
+        msg_key = (f.file, _normalize(f.message).lower())
+        if (f.file, f.line) in seen_lines or msg_key in seen_messages:
+            continue
+        seen_lines.add((f.file, f.line))
+        seen_messages.add(msg_key)
+        ordered.append(f)
+    ordered = ordered[: config.max_comments]
 
     return Review(summary=str(data.get("summary", "")).strip(), findings=ordered, discarded=discarded)
