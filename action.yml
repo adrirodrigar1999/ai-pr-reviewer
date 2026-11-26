@@ -11,7 +11,7 @@ inputs:
     default: ""
   ollama-model:
     description: "Modelo de Ollama cuando provider es 'ollama'."
-    default: "qwen2.5-coder:3b"
+    default: "qwen2.5-coder:7b"
   github-token:
     description: "Token para leer el PR y publicar la revisión."
     default: ${{ github.token }}
