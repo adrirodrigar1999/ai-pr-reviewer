@@ -10,6 +10,7 @@ Un LLM puede inventarse ficheros o números de línea. Antes de publicar nada:
 
 from __future__ import annotations
 
+import difflib
 import json
 import re
 from dataclasses import dataclass, field
@@ -64,18 +65,31 @@ def _normalize(code: str) -> str:
     return " ".join(code.split())
 
 
+MIN_SIMILARITY = 0.6
+
+
+def _similarity(snippet: str, content: str) -> float:
+    if not content:
+        return 0.0
+    if snippet in content or content in snippet:
+        return 1.0
+    return difflib.SequenceMatcher(None, snippet, content).ratio()
+
+
 def anchor(finding: Finding, file: FileDiff) -> int | None:
-    """Devuelve la línea correcta para el hallazgo, o None si no se puede ubicar en el diff."""
+    """Devuelve la línea correcta para el hallazgo, o None si no se puede ubicar en el diff.
+
+    Si el modelo cita código, gana la línea añadida más parecida a la cita (exacta o aproximada).
+    Si no cita nada o la cita no se parece a ninguna línea, vale el número que dio, si es una línea añadida.
+    """
     added = {ln.new_lineno: _normalize(ln.content) for ln in file.lines if ln.kind == "+" and ln.new_lineno}
     snippet = _normalize(finding.code)
-    if not snippet:
-        return finding.line if finding.line in added else None
-    if snippet in added.get(finding.line, ""):
-        return finding.line
-    matches = [n for n, content in added.items() if snippet and snippet in content]
-    if not matches:
-        return None  # cita código que no está en las líneas añadidas
-    return min(matches, key=lambda n: abs(n - finding.line))
+    if snippet:
+        scored = [(_similarity(snippet, content), -abs(n - finding.line), n) for n, content in added.items()]
+        best = max(scored, default=None)
+        if best and best[0] >= MIN_SIMILARITY:
+            return best[2]
+    return finding.line if finding.line in added else None
 
 
 def parse_review(text: str, files: list[FileDiff], config: RepoConfig) -> Review:

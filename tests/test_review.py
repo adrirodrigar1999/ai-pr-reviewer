@@ -76,9 +76,17 @@ def test_code_snippet_relocates_wrong_line_number():
     assert [x.line for x in review.findings] == [7]
 
 
-def test_code_snippet_not_in_diff_is_discarded():
-    invented = {**f(line=7), "code": "eval(user_input)"}
-    review = parse_review(answer([invented]), FILES, RepoConfig())
+def test_code_snippet_approximate_match_relocates():
+    approx = {**f(line=12), "code": "query = f'SELECT * FROM users WHERE id={user_id}'"}
+    review = parse_review(answer([approx]), FILES, RepoConfig())
+    assert [x.line for x in review.findings] == [7]
+
+
+def test_unmatched_snippet_falls_back_to_valid_line_or_discards():
+    keep = {**f(line=7), "code": "eval(user_input)"}
+    assert [x.line for x in parse_review(answer([keep]), FILES, RepoConfig()).findings] == [7]
+    drop = {**f(line=2), "code": "eval(user_input)"}
+    review = parse_review(answer([drop]), FILES, RepoConfig())
     assert review.findings == [] and review.discarded == 1
 
 

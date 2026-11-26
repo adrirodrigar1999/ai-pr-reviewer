@@ -31,7 +31,11 @@ def run_review(diff_text: str, llm: LLMClient, config: RepoConfig, max_chars: in
     if not files:
         review = Review(summary="No hay cambios de código que revisar en este PR.")
     else:
-        review = parse_review(llm.complete(build_messages(files, config, title, body)), files, config)
+        raw = llm.complete(build_messages(files, config, title, body))
+        print("::group::Respuesta del modelo")
+        print(raw)
+        print("::endgroup::")
+        review = parse_review(raw, files, config)
     report = summary_body(review, llm.model, [f.path for f in files], skipped, dropped)
     return review, report
 
