@@ -63,7 +63,13 @@ class LLMClient:
                 continue
             if resp.status_code >= 400:
                 raise LLMError(f"El modelo devolvió HTTP {resp.status_code}: {resp.text[:300]}")
-            data = resp.json()
+            try:
+                data = resp.json()
+            except ValueError as exc:
+                content_type = resp.headers.get("Content-Type", "?") if hasattr(resp, "headers") else "?"
+                raise LLMError(
+                    f"El modelo respondió HTTP {resp.status_code} ({content_type}) sin JSON: {resp.text[:300]!r}"
+                ) from exc
             try:
                 return data["choices"][0]["message"]["content"] or ""
             except (KeyError, IndexError, TypeError) as exc:
