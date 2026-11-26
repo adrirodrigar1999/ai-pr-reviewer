@@ -52,6 +52,9 @@ def test_main_in_github_actions(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("GITHUB_TOKEN", "gh-token")
     monkeypatch.setenv("CONFIG_PATH", str(tmp_path / "no-existe.yml"))
     monkeypatch.setenv("FAIL_ON", "high")
+    monkeypatch.setenv("LLM_BASE_URL", "https://mi-recurso.openai.azure.com/openai/v1")
+    monkeypatch.setenv("LLM_API_KEY", "llm-key")
+    monkeypatch.setenv("LLM_AUTH", "api-key")
 
     gh_session = FakeSession(
         [
@@ -69,8 +72,10 @@ def test_main_in_github_actions(tmp_path, monkeypatch, capsys):
     review_call = gh_session.calls[2]
     assert review_call["json"]["commit_id"] == "sha123"
     assert review_call["json"]["comments"][0]["line"] == 8
-    assert llm_session.calls[0]["headers"]["Authorization"] == "Bearer gh-token"
-    assert llm_session.calls[0]["url"] == "https://models.github.ai/inference/chat/completions"
+    assert llm_session.calls[0]["headers"]["api-key"] == "llm-key"
+    assert "Authorization" not in llm_session.calls[0]["headers"]
+    assert llm_session.calls[0]["url"] == "https://mi-recurso.openai.azure.com/openai/v1/chat/completions"
+    assert gh_session.calls[0]["headers"]["Authorization"] == "Bearer gh-token"
     assert "1 comentarios, 1 descartados" in capsys.readouterr().out
 
 
@@ -79,8 +84,17 @@ def test_main_local_diff_file(tmp_path, monkeypatch, capsys):
     diff.write_text(SAMPLE)
     monkeypatch.setenv("CONFIG_PATH", str(tmp_path / "no.yml"))
     monkeypatch.delenv("FAIL_ON", raising=False)
+    monkeypatch.setenv("LLM_BASE_URL", "http://localhost:8080/v1")
+    monkeypatch.setenv("LLM_API_KEY", "k")
     session = FakeSession([llm_answer(ANSWER)])
     real_llm = main_mod.LLMClient
     monkeypatch.setattr(main_mod, "LLMClient", lambda **k: real_llm(session=session, **k))
     assert main_mod.main(["--diff-file", str(diff)]) == 0
     assert "`app/users.py:8`" in capsys.readouterr().out
+
+
+def test_main_skips_without_llm_config(monkeypatch, capsys):
+    monkeypatch.delenv("LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    assert main_mod.main([]) == 0
+    assert "::warning::" in capsys.readouterr().out

@@ -1,4 +1,5 @@
 # El revisor se revisa a sí mismo: cada PR de este repositorio pasa por la Action.
+# Necesita los secretos LLM_BASE_URL y LLM_API_KEY (y la variable LLM_AUTH si usas Azure OpenAI).
 name: Revisión con IA
 
 on:
@@ -8,7 +9,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  models: read
 
 jobs:
   review:
@@ -16,3 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./
+        with:
+          llm-base-url: ${{ secrets.LLM_BASE_URL }}
+          llm-api-key: ${{ secrets.LLM_API_KEY }}
+          llm-auth: ${{ vars.LLM_AUTH || 'bearer' }}
+          model: ${{ vars.LLM_MODEL || 'gpt-4o-mini' }}

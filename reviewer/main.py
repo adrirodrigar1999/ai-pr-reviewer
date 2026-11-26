@@ -47,10 +47,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--diff-file", help="Revisar un diff local e imprimir el resultado (no publica nada)")
     args = parser.parse_args(argv)
 
+    base_url, api_key = env("LLM_BASE_URL"), env("LLM_API_KEY")
+    if not base_url or not api_key:
+        # Sin proveedor configurado no se rompe el PR: se avisa y se sale sin error.
+        print("::warning::AI PR Reviewer: faltan llm-base-url o llm-api-key; se omite la revisión.")
+        return 0
     llm = LLMClient(
-        base_url=env("LLM_BASE_URL", "https://models.github.ai/inference"),
-        api_key=env("LLM_API_KEY") or env("GITHUB_TOKEN"),
-        model=env("LLM_MODEL", "openai/gpt-4o-mini"),
+        base_url=base_url,
+        api_key=api_key,
+        model=env("LLM_MODEL", "gpt-4o-mini"),
+        auth=env("LLM_AUTH", "bearer"),
     )
     config = load_repo_config(env("CONFIG_PATH", ".ai-review.yml"))
     max_chars = int(env("MAX_DIFF_CHARS", "60000"))

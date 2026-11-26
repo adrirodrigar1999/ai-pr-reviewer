@@ -1,7 +1,7 @@
 """Cliente mínimo para cualquier API compatible con OpenAI chat/completions.
 
-Funciona con GitHub Models (por defecto, gratis con el GITHUB_TOKEN de Actions),
-Azure OpenAI a través de una pasarela como llm-gateway, OpenAI, Ollama...
+Funciona con Azure OpenAI (API v1), una pasarela como llm-gateway, OpenAI,
+Google Gemini (endpoint compatible), Ollama...
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ class LLMClient:
         base_url: str,
         api_key: str,
         model: str,
+        auth: str = "bearer",
         timeout: float = 120.0,
         session: requests.Session | None = None,
         sleep=time.sleep,
@@ -29,13 +30,16 @@ class LLMClient:
         self.url = base_url.rstrip("/") + "/chat/completions"
         self.api_key = api_key
         self.model = model
+        self.auth = auth.lower()
         self.timeout = timeout
         self.session = session or requests.Session()
         self._sleep = sleep
 
     def _post(self, body: dict[str, Any]) -> requests.Response:
         headers = {"Content-Type": "application/json"}
-        if self.api_key:
+        if self.api_key and self.auth == "api-key":
+            headers["api-key"] = self.api_key  # Azure OpenAI con clave del recurso
+        elif self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return self.session.post(self.url, json=body, headers=headers, timeout=self.timeout)
 

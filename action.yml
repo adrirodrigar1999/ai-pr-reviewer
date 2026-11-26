@@ -7,17 +7,20 @@ branding:
 
 inputs:
   github-token:
-    description: "Token para leer el PR y publicar la revisión. También se usa para GitHub Models si no hay llm-api-key."
+    description: "Token para leer el PR y publicar la revisión."
     default: ${{ github.token }}
   llm-base-url:
-    description: "URL base de una API compatible con OpenAI (GitHub Models, llm-gateway, Azure OpenAI vía pasarela, Ollama...)."
-    default: "https://models.github.ai/inference"
-  llm-api-key:
-    description: "Clave del proveedor del modelo. Vacío = usar github-token (GitHub Models)."
+    description: "URL base de una API compatible con OpenAI (Azure OpenAI v1, llm-gateway, OpenAI, Gemini, Ollama...). Sin ella, la revisión se omite con un aviso."
     default: ""
+  llm-api-key:
+    description: "Clave del proveedor del modelo (guárdala como secreto)."
+    default: ""
+  llm-auth:
+    description: "Cómo enviar la clave: bearer (OpenAI, llm-gateway, Gemini...) o api-key (Azure OpenAI)."
+    default: "bearer"
   model:
-    description: "Modelo a usar."
-    default: "openai/gpt-4o-mini"
+    description: "Modelo o nombre del deployment."
+    default: "gpt-4o-mini"
   config-path:
     description: "Ruta del fichero de configuración del repositorio."
     default: ".ai-review.yml"
@@ -44,6 +47,7 @@ runs:
         LLM_BASE_URL: ${{ inputs.llm-base-url }}
         LLM_API_KEY: ${{ inputs.llm-api-key }}
         LLM_MODEL: ${{ inputs.model }}
+        LLM_AUTH: ${{ inputs.llm-auth }}
         CONFIG_PATH: ${{ inputs.config-path }}
         MAX_DIFF_CHARS: ${{ inputs.max-diff-chars }}
         FAIL_ON: ${{ inputs.fail-on }}

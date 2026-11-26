@@ -4,7 +4,7 @@
 
 GitHub Action que revisa cada pull request con un modelo de lenguaje y deja **comentarios en las líneas concretas** donde ve errores, riesgos de seguridad o lógica sin tests, más un resumen del PR.
 
-Funciona sin configurar claves: por defecto usa **GitHub Models** con el `GITHUB_TOKEN` del propio workflow. También puede apuntar a cualquier API compatible con OpenAI, por ejemplo [llm-gateway](https://github.com/adrirodrigar1999/llm-gateway) delante de Azure OpenAI, para controlar el coste y los modelos permitidos por equipo.
+Funciona con cualquier API compatible con OpenAI: **Azure OpenAI**, OpenAI, Google Gemini, Ollama… o [llm-gateway](https://github.com/adrirodrigar1999/llm-gateway) delante de ellos, para controlar el coste y los modelos permitidos por equipo.
 
 ## Cómo funciona
 
@@ -26,7 +26,8 @@ flowchart LR
 
 ## Uso
 
-Copia [`examples/ai-review.yml`](examples/ai-review.yml) en `.github/workflows/` de tu repositorio:
+1. Crea los secretos `LLM_BASE_URL` y `LLM_API_KEY` en *Settings → Secrets and variables → Actions*.
+2. Copia [`examples/ai-review.yml`](examples/ai-review.yml) en `.github/workflows/` de tu repositorio:
 
 ```yaml
 name: Revisión con IA
@@ -37,7 +38,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  models: read   # GitHub Models con el GITHUB_TOKEN, sin claves extra
 
 jobs:
   review:
@@ -45,15 +45,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: adrirodrigar1999/ai-pr-reviewer@v1
+        with:
+          llm-base-url: ${{ secrets.LLM_BASE_URL }}
+          llm-api-key: ${{ secrets.LLM_API_KEY }}
+          llm-auth: api-key        # Azure OpenAI; "bearer" para el resto
+          model: gpt-4o-mini
 ```
+
+Si faltan los secretos, la Action no rompe el PR: muestra un aviso y omite la revisión.
+
+### Proveedores
+
+| Proveedor | `llm-base-url` | `llm-auth` |
+|---|---|---|
+| Azure OpenAI (API v1) | `https://<recurso>.openai.azure.com/openai/v1` | `api-key` |
+| llm-gateway | `https://<tu-gateway>/v1` | `bearer` |
+| OpenAI | `https://api.openai.com/v1` | `bearer` |
+| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/openai` | `bearer` |
+| Ollama (local) | `http://localhost:11434/v1` | `bearer` |
 
 ### Entradas
 
 | Entrada | Por defecto | Descripción |
 |---|---|---|
-| `llm-base-url` | `https://models.github.ai/inference` | API compatible con OpenAI |
-| `llm-api-key` | *(vacío → `github-token`)* | Clave del proveedor |
-| `model` | `openai/gpt-4o-mini` | Modelo |
+| `llm-base-url` | — | API compatible con OpenAI (obligatoria) |
+| `llm-api-key` | — | Clave del proveedor (obligatoria, como secreto) |
+| `llm-auth` | `bearer` | `bearer` o `api-key` (Azure OpenAI) |
+| `model` | `gpt-4o-mini` | Modelo o deployment |
 | `fail-on` | `none` | `low` / `medium` / `high`: marca el check como fallido si hay hallazgos de esa prioridad o mayor |
 | `max-diff-chars` | `60000` | Tamaño máximo del diff enviado (controla coste y contexto) |
 | `config-path` | `.ai-review.yml` | Configuración del repositorio |

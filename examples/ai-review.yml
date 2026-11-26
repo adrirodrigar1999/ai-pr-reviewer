@@ -1,4 +1,5 @@
-# Copia este fichero en .github/workflows/ai-review.yml de tu repositorio.
+# Copia este fichero en .github/workflows/ai-review.yml de tu repositorio
+# y crea los secretos LLM_BASE_URL y LLM_API_KEY en Settings → Secrets and variables → Actions.
 name: Revisión con IA
 
 on:
@@ -8,18 +9,23 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  models: read # permite usar GitHub Models con el GITHUB_TOKEN, sin claves extra
 
 jobs:
   review:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4 # solo necesario si usas .ai-review.yml
+
+      # Azure OpenAI (API v1): LLM_BASE_URL = https://<recurso>.openai.azure.com/openai/v1
       - uses: adrirodrigar1999/ai-pr-reviewer@v1
         with:
-          fail-on: high # opcional: bloquea el PR si hay hallazgos graves
+          llm-base-url: ${{ secrets.LLM_BASE_URL }}
+          llm-api-key: ${{ secrets.LLM_API_KEY }}
+          llm-auth: api-key
+          model: gpt-4o-mini # nombre del deployment
+          fail-on: high # opcional: marca el check como fallido si hay hallazgos graves
 
-      # Alternativa: pasar por llm-gateway para controlar coste y permisos por equipo
+      # A través de llm-gateway (control de coste y modelos por equipo):
       # - uses: adrirodrigar1999/ai-pr-reviewer@v1
       #   with:
       #     llm-base-url: https://mi-gateway.example.com/v1
